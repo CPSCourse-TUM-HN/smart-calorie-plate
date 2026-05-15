@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+pydantic
+python-multipart
+ultralytics
+opencv-python-headless
+numpy
