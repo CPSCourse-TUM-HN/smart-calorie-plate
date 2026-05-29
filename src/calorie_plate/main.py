@@ -4,8 +4,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 
-from database import engine, Food
+from database import engine, Food, DietNote, UserProfile
 from inference import detect as run_detection
+from utils import calculate_nutrition_targets
 
 # 1. 初始化 FastAPI 应用（这就相当于建好了一个服务器外壳）
 app = FastAPI(
@@ -13,6 +14,13 @@ app = FastAPI(
     description="AI卡路里餐盘的后端接口",
     version="1.0.0"
 )
+
+from sqlmodel import SQLModel
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
+    
 class FoodItem(BaseModel):
     food_id: int      # 食物在数据库里的 ID
     weight_g: float   # 称重传感器传来的克数
@@ -185,3 +193,47 @@ async def analyze_meal_from_image(
     result = _compute_nutrition(items, session)
     result["detections"] = detections
     return result
+
+
+class UserProfileCreate(BaseModel):
+    age: int
+    gender: str
+    height_cm: float
+    weight_kg: float
+    activity_level: float
+    diet_mode: str
+
+
+@app.post("/api/user-profile/")
+def create_user_profile(
+    profile: UserProfileCreate,
+    session: Session = Depends(get_session),
+):
+    """接收用户身体数据，计算目标热量与三大营养素，并保存 UserProfile。"""
+    targets = calculate_nutrition_targets(
+        age=profile.age,
+        gender=profile.gender,
+        height_cm=profile.height_cm,
+        weight_kg=profile.weight_kg,
+        activity_level=profile.activity_level,
+        diet_mode=profile.diet_mode,
+    )
+
+    user = UserProfile(
+        age=profile.age,
+        gender=profile.gender,
+        height_cm=profile.height_cm,
+        weight_kg=profile.weight_kg,
+        activity_level=profile.activity_level,
+        diet_mode=profile.diet_mode,
+        target_calories=targets["target_calories"],
+        target_protein_g=targets["target_protein_g"],
+        target_fat_g=targets["target_fat_g"],
+        target_carbs_g=targets["target_carbs_g"],
+    )
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return {"user_profile": user, "targets": targets}

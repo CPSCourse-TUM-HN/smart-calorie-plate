@@ -4,3 +4,6 @@ __pycache__/
 # 本地数据 / 测试素材
 photo/
 *.db
+.venv/
+.venv
+database.db
