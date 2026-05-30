@@ -1,9 +1,12 @@
-__pycache__/
+# macOS
 .DS_Store
 
-# 本地数据 / 测试素材
-photo/
-*.db
+# Python
+__pycache__/
+*.pyc
+venv/
 .venv/
-.venv
-database.db
+
+# Next.js 前端依赖 (绝对不能传)
+smart-plate-ui/node_modules/
+smart-plate-ui/.next/
