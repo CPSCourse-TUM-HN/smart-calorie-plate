@@ -10,3 +10,9 @@ venv/
 # Next.js 前端依赖 (绝对不能传)
 smart-plate-ui/node_modules/
 smart-plate-ui/.next/
+
+# Next.js 构建产物（由 npm run build 生成，无需入库）
+smart-plate-ui/out/
+
+# 运行时生成的数据库
+*.db

@@ -145,3 +145,62 @@ curl -X POST http://127.0.0.1:8000/meal/analyze \
 ## 支持识别的食物（18 类，food_id 0–17）
 
 banana, beef, bread, broccoli, carrot, chicken, cucumber, egg, fish, juice, lemon, noodles, pork, potato, rice, sausage, strawberry, tomato
+
+---
+
+## 🖥️ 桌面 App（一键运行）
+
+> 以下为本节新增内容。前端 (Next.js) + PyWebView 桌面壳：FastAPI 在本地启动并**同源托管**前端静态站点，
+> PyWebView 打开窗口指向它，前后端同源，无需单独跑 `next dev`，也解决了"打包后页面无法跳转 / 只在 localhost 能用"的问题。
+
+### 运行步骤
+
+```bash
+# 1) 安装后端 + 桌面依赖（requirements.txt 已含 pywebview）
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2) 构建前端静态站点（生成 smart-plate-ui/out/）
+cd smart-plate-ui
+npm install
+npm run build                      # 等价于 next build --webpack，产物兼容老版 WebView
+cd ..
+
+# 3) 一键启动桌面 App
+python run_app.py
+```
+
+`run_app.py`：后台线程拉起 uvicorn（127.0.0.1:8000）→ 等 `/api/health` 就绪 → 打开 PyWebView 窗口。
+数据库 `database.db` 首次启动**自动建表并灌入 18 种食物**，无需手动跑 `database.py` / `seed_data.py`。
+
+### 前端开发模式（热更新，可选）
+
+```bash
+# 终端 A：后端
+cd src/calorie_plate && uvicorn main:app --reload
+# 终端 B：前端 dev（自动连 127.0.0.1:8000）
+cd smart-plate-ui && npm run dev   # http://localhost:3000
+```
+
+### 桌面端功能一览
+
+- **设置页**：填写身体数据 + 可选用户名（留空自动生成随机名）→ 计算个性化营养目标
+- **识别工作台**：上传餐盘照片 / 调用相机 → YOLO 识别 → 填写每样食物重量 → 计算热量与三大营养素
+- **Diet Notes**：每餐记录持久化（数据记忆），可回看历史
+- **Nutrition Analysis**：基于今日摄入 vs 目标的推荐 + 推荐补充食物
+- **Account Settings**：多账号切换、单独删除
+
+### 新增接口（前端用到）
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/api/health` | 健康检查（启动探活） |
+| POST | `/api/user-profile/` | 创建账号 + 计算目标值 |
+| GET | `/api/user-profiles/` | 账号列表（切换用） |
+| GET | `/api/user-profile/{id}` | 查单个账号 |
+| DELETE | `/api/user-profile/{id}` | 删除账号 |
+| POST | `/api/meals/` | 确认摄入（写入一餐记录） |
+| GET | `/api/meals/` | 餐食历史 |
+| GET | `/api/meals/summary` | 当日摄入汇总 |
+| POST | `/api/recommend` | 营养推荐 |

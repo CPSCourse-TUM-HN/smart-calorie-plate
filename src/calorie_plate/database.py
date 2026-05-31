@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 from sqlmodel import Field, SQLModel, create_engine
 
 # 1. 定义数据模型（这既是 Pydantic 模型，也是数据库的表结构）
@@ -32,9 +33,27 @@ class DietNote(SQLModel, table=True):
     advice: str | None = None
 
 
+class Meal(SQLModel, table=True):
+    """一次"确认摄入"的记录——数据记忆的核心，可按用户/日期回溯每一餐。"""
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, index=True)
+    log_date: date = Field(default_factory=date.today)
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    total_kcal: float = 0.0
+    total_protein_g: float = 0.0
+    total_carbs_g: float = 0.0
+    total_fat_g: float = 0.0
+
+    # 这一餐的食物明细（JSON 字符串：[{food_id,name_zh,weight_g,kcal,...}]）
+    items_json: str | None = None
+    advice: str | None = None
+
+
 class UserProfile(SQLModel, table=True):
     """用户身体信息与系统计算出的目标值。"""
     id: int | None = Field(default=None, primary_key=True)
+    name: str | None = None  # 账号显示名（用户可手填，留空则前端生成随机名）
     age: int
     gender: str  # 'male' or 'female'
     height_cm: float
@@ -48,12 +67,14 @@ class UserProfile(SQLModel, table=True):
     target_fat_g: float | None = None
     target_carbs_g: float | None = None
 
-# 2. 指定数据库文件名称（它会在当前目录下生成）
-sqlite_file_name = "database.db"
+# 2. 数据库文件用绝对路径，固定放在本模块同级目录，
+#    这样无论从哪个工作目录启动（开发 / 打包后的 app）都指向同一个库。
+DB_PATH = Path(__file__).resolve().parent / "database.db"
+sqlite_file_name = str(DB_PATH)
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 # 3. 创建引擎（连接数据库的桥梁）
-engine = create_engine(sqlite_url, echo=True)
+engine = create_engine(sqlite_url, echo=False)
 
 # 4. 初始化数据库的函数
 def create_db_and_tables():

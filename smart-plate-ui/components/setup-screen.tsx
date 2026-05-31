@@ -1,24 +1,33 @@
 "use client"
 
 import { useState } from "react"
-import { Activity, ArrowRight, ChevronDown, Sparkles } from "lucide-react"
+import { Activity, ArrowRight, ChevronDown, Loader2, Sparkles } from "lucide-react"
+import {
+  computeTargetsLocal,
+  createUserProfile,
+  type NutritionTargets,
+} from "@/lib/api"
 
 export type Profile = {
+  name: string
   age: string
   gender: string
   height: string
   weight: string
   activity: string
   diet: string
+  // 提交后附加：账号 id（后端写入成功才有）+ 计算出的营养目标
+  userId: number | null
+  targets: NutritionTargets
 }
 
 const fieldClass =
-  "h-12 w-full rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-all duration-200 focus:border-emerald-500/60 focus:bg-zinc-900 focus:ring-4 focus:ring-emerald-500/10"
+  "h-12 w-full rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none transition-all duration-200 focus:border-emerald-500/60 focus:bg-zinc-900 focus:ring-4 focus:ring-emerald-500/10"
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</label>
+      <label className="text-xs font-medium uppercase tracking-wider text-zinc-400">{label}</label>
       {children}
     </div>
   )
@@ -42,13 +51,16 @@ function NativeSelect({
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
     </div>
   )
 }
 
+type Form = Pick<Profile, "name" | "age" | "gender" | "height" | "weight" | "activity" | "diet">
+
 export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
-  const [profile, setProfile] = useState<Profile>({
+  const [form, setForm] = useState<Form>({
+    name: "",
     age: "21",
     gender: "female",
     height: "170",
@@ -56,13 +68,50 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
     activity: "light",
     diet: "fatloss",
   })
+  const [loading, setLoading] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
 
-  const set = (key: keyof Profile, value: string) =>
-    setProfile((p) => ({ ...p, [key]: value }))
+  const set = (key: keyof Form, value: string) =>
+    setForm((p) => ({ ...p, [key]: value }))
+
+  const handleSubmit = async () => {
+    if (loading) return
+    setLoading(true)
+    setNote(null)
+
+    // 用户名留空则生成一个随机默认名。
+    const name = form.name.trim() || `Guest-${Math.floor(1000 + Math.random() * 9000)}`
+
+    const input = {
+      name,
+      age: Number(form.age) || 0,
+      gender: form.gender,
+      height_cm: Number(form.height) || 0,
+      weight_kg: Number(form.weight) || 0,
+      activity_level: form.activity,
+      diet_mode: form.diet,
+    }
+
+    let userId: number | null = null
+    let targets: NutritionTargets
+
+    try {
+      const res = await createUserProfile(input)
+      targets = res.targets
+      userId = res.user_profile?.id ?? null
+    } catch (e) {
+      // 后端不可用也绝不卡住跳转：本地算目标值，照常进入 Dashboard。
+      targets = computeTargetsLocal(input)
+      setNote("Offline mode: backend not connected, using locally computed targets.")
+    }
+
+    // 无论联网与否都会跳转 —— 这是修复"打包后无法跳转"的关键。
+    onSubmit({ ...form, name, userId, targets })
+    setLoading(false)
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 px-4 py-12">
-      {/* ambient glow */}
       <div className="pointer-events-none absolute left-1/2 top-0 h-[40rem] w-[40rem] -translate-x-1/2 -translate-y-1/3 rounded-full bg-emerald-600/10 blur-3xl" />
 
       <div className="relative w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900/40 p-8 shadow-2xl shadow-black/60 backdrop-blur-xl">
@@ -73,21 +122,33 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
           <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-50">
             Smart Plate Setup
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">Enter your body metrics to generate a personalized nutrition goal</p>
+          <p className="mt-2 text-sm text-zinc-400">Enter your body metrics to generate a personalized nutrition goal</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Field label="Username">
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Optional — leave blank for a random name"
+                className={fieldClass}
+              />
+            </Field>
+          </div>
+
           <Field label="Age">
             <input
               type="number"
-              value={profile.age}
+              value={form.age}
               onChange={(e) => set("age", e.target.value)}
               className={fieldClass}
             />
           </Field>
 
           <Field label="Gender">
-            <NativeSelect value={profile.gender} onChange={(v) => set("gender", v)}>
+            <NativeSelect value={form.gender} onChange={(v) => set("gender", v)}>
               <option value="female">Female</option>
               <option value="male">Male</option>
             </NativeSelect>
@@ -96,7 +157,7 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
           <Field label="Height (cm)">
             <input
               type="number"
-              value={profile.height}
+              value={form.height}
               onChange={(e) => set("height", e.target.value)}
               className={fieldClass}
             />
@@ -105,7 +166,7 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
           <Field label="Weight (kg)">
             <input
               type="number"
-              value={profile.weight}
+              value={form.weight}
               onChange={(e) => set("weight", e.target.value)}
               className={fieldClass}
             />
@@ -113,7 +174,7 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
 
           <div className="col-span-2">
             <Field label="Activity Level">
-              <NativeSelect value={profile.activity} onChange={(v) => set("activity", v)}>
+              <NativeSelect value={form.activity} onChange={(v) => set("activity", v)}>
                 <option value="sedentary">Sedentary</option>
                 <option value="light">Lightly Active</option>
                 <option value="moderate">Moderately Active</option>
@@ -124,7 +185,7 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
 
           <div className="col-span-2">
             <Field label="Diet Mode">
-              <NativeSelect value={profile.diet} onChange={(v) => set("diet", v)}>
+              <NativeSelect value={form.diet} onChange={(v) => set("diet", v)}>
                 <option value="fatloss">Fat Loss</option>
                 <option value="maintain">Maintain</option>
                 <option value="bulk">Bulk</option>
@@ -133,13 +194,29 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
           </div>
         </div>
 
+        {note && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            {note}
+          </p>
+        )}
+
         <button
-          onClick={() => onSubmit(profile)}
-          className="group mt-8 flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:bg-emerald-500 hover:shadow-emerald-500/30 active:scale-[0.98]"
+          onClick={handleSubmit}
+          disabled={loading}
+          className="group mt-8 flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:bg-emerald-500 hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <Activity className="h-4 w-4" />
-          Calculate Goal &amp; Enter Dashboard
-          <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Calculating...
+            </>
+          ) : (
+            <>
+              <Activity className="h-4 w-4" />
+              Calculate Goal &amp; Enter Dashboard
+              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+            </>
+          )}
         </button>
       </div>
     </main>

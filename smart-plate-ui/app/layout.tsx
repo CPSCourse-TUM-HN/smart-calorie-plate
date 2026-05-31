@@ -1,14 +1,9 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: 'Smart Plate · 智能卡路里餐盘',
-  description: '基于图像识别的智能营养与卡路里管理系统',
+  title: 'Smart Plate',
+  description: 'AI-powered nutrition and calorie management with image recognition',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,10 +30,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN" className="dark bg-zinc-950">
+    <html lang="en" className="dark bg-zinc-950">
       <body className="font-sans antialiased bg-zinc-950 text-zinc-100">
+        {/* 兜底错误浮层：老版 WebView(如 PyWebView 的 WKWebView)注水报错时，
+            没有开发者工具也能在页面底部看到真实错误，便于排查"按钮无反应"。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){function show(m){var d=document.getElementById('__err')||document.createElement('div');d.id='__err';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;max-height:50vh;overflow:auto;background:#7f1d1d;color:#fff;font:12px/1.5 ui-monospace,monospace;padding:12px;white-space:pre-wrap';d.textContent='[JS ERROR] '+m;document.body.appendChild(d);}window.addEventListener('error',function(e){show((e.error&&e.error.stack)||e.message||String(e));});window.addEventListener('unhandledrejection',function(e){show('Promise: '+((e.reason&&e.reason.stack)||e.reason));});})();`,
+          }}
+        />
         {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
