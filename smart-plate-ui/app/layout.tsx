@@ -32,8 +32,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark bg-zinc-950">
       <body className="font-sans antialiased bg-zinc-950 text-zinc-100">
-        {/* 兜底错误浮层：老版 WebView(如 PyWebView 的 WKWebView)注水报错时，
-            没有开发者工具也能在页面底部看到真实错误，便于排查"按钮无反应"。 */}
+        {/* Fallback error overlay: when hydration fails in an old WebView
+            (e.g. PyWebView's WKWebView), the real error is shown at the
+            bottom of the page even without dev tools, which makes
+            "button does nothing" issues debuggable. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){function show(m){var d=document.getElementById('__err')||document.createElement('div');d.id='__err';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;max-height:50vh;overflow:auto;background:#7f1d1d;color:#fff;font:12px/1.5 ui-monospace,monospace;padding:12px;white-space:pre-wrap';d.textContent='[JS ERROR] '+m;document.body.appendChild(d);}window.addEventListener('error',function(e){show((e.error&&e.error.stack)||e.message||String(e));});window.addEventListener('unhandledrejection',function(e){show('Promise: '+((e.reason&&e.reason.stack)||e.reason));});})();`,

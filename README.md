@@ -1,57 +1,58 @@
 # smart-calorie-plate
 
-AI 卡路里餐盘:YOLOv11 视觉识别 + FastAPI 营养计算后端。
+AI-powered calorie plate: YOLOv11 food recognition + FastAPI nutrition backend.
 
-## 快速开始
+## Quick Start
 
-### 1. 拉代码
+### 1. Clone the repository
 ```bash
 git clone https://github.com/xsn30/smart-calorie-plate.git
 cd smart-calorie-plate
 ```
 
-### 2. 建虚拟环境（推荐）
+### 2. Create a virtual environment (recommended)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 ```
 
-### 3. 装依赖
+### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. 初始化数据库 + 灌入 18 种食物的营养数据
+### 4. Initialize the database and seed the 18 foods
 ```bash
 cd src/calorie_plate
-python database.py        # 建表
-python seed_data.py       # 写入种子数据
+python database.py        # create tables
+python seed_data.py       # insert seed data
 ```
-执行完会在当前目录生成 `database.db`。
+This creates `database.db` in the current directory.
 
-### 5. 启动后端服务
+### 5. Start the backend server
 ```bash
 uvicorn main:app --reload
 ```
-看到 `Uvicorn running on http://127.0.0.1:8000` 即可。
+You should see `Uvicorn running on http://127.0.0.1:8000`.
 
-### 6. 试用接口
+### 6. Try the API
 
-打开浏览器访问 **http://127.0.0.1:8000/docs**,FastAPI 自带 Swagger UI,可视化测试,不用写代码。
+Open **http://127.0.0.1:8000/docs** in your browser. FastAPI ships with
+Swagger UI, so you can test every endpoint visually without writing code.
 
-#### A. 先确认数据库通了:`GET /foods`
+#### A. Verify the database first: `GET /foods`
 
-1. 点开 `GET /foods` 那一行 → 右上角 **Try it out**(变成 Execute 按钮)
-2. 点 **Execute**
-3. 下方 Response body 应该返回 18 条食物记录(banana / beef / ...),说明数据库 OK。
+1. Expand the `GET /foods` row → click **Try it out** (top right, turns into an Execute button)
+2. Click **Execute**
+3. The response body should contain 18 food records (banana / beef / ...), confirming the database works.
 
-#### B. 只识别食物(不算热量):`POST /meal/detect`
+#### B. Detection only (no calorie math): `POST /meal/detect`
 
-1. 准备一张含食物的图片(JPG/PNG 都行)。仓库里 `photo/` 是空的,你可以随便从手机里传一张,或用网图。
-2. 点开 `POST /meal/detect` → **Try it out**
-3. `image` 字段点 **Choose File**,选一张图;`conf` 留默认 `0.25`(置信度阈值,越低识别越多)
-4. 点 **Execute**
-5. 返回示例:
+1. Prepare a photo containing food (JPG or PNG). The `photo/` folder in the repo is empty, so use any photo from your phone or the web.
+2. Expand `POST /meal/detect` → **Try it out**
+3. For the `image` field click **Choose File** and pick a photo; leave `conf` at the default `0.25` (confidence threshold — lower values detect more)
+4. Click **Execute**
+5. Example response:
    ```json
    {
      "detections": [
@@ -60,17 +61,18 @@ uvicorn main:app --reload
      ]
    }
    ```
-   ⚠️ 第一次调用要等 5–10 秒(在加载 `best.pt`),之后毫秒级。
+   Note: the first call takes 5–10 seconds (loading `best.pt`); subsequent calls are near-instant.
 
-#### C. 识别 + 算热量(一站式):`POST /meal/analyze-image`
+#### C. Detection + calorie math in one call: `POST /meal/analyze-image`
 
-接着 B 步的检测结果,假设你想告诉后端"米饭 150g、西兰花 80g":
+Following the detection result from step B, suppose you want to tell the
+backend "150 g of rice and 80 g of broccoli":
 
-1. 点开 `POST /meal/analyze-image` → **Try it out**
-2. `image`:选同一张图
-3. `weights`:填 `[150, 80]` —— **顺序必须和 B 步 detections 的顺序一致**
-4. `conf`:留 `0.25`
-5. 点 **Execute**,返回:
+1. Expand `POST /meal/analyze-image` → **Try it out**
+2. `image`: pick the same photo
+3. `weights`: enter `[150, 80]` — **the order must match the order of the detections from step B**
+4. `conf`: leave at `0.25`
+5. Click **Execute**. The response looks like:
    ```json
    {
      "total_kcal": 202.8,
@@ -86,121 +88,126 @@ uvicorn main:app --reload
    }
    ```
 
-#### D. 不想用浏览器?命令行 curl 同样能用:
+#### D. Prefer the command line? curl works too:
 
 ```bash
-# 只识别食物 → 返回 food_id 列表
+# Detection only → returns a list of food_ids
 curl -X POST http://127.0.0.1:8000/meal/detect \
   -F "image=@/path/to/photo.jpg"
 
-# 识别 + 算热量（weights 按 detect 返回顺序，单位克）
+# Detection + calorie math (weights in grams, ordered like the detect response)
 curl -X POST http://127.0.0.1:8000/meal/analyze-image \
   -F "image=@/path/to/photo.jpg" \
   -F "weights=[150,80]"
 
-# 也可以跳过模型，直接用 food_id 算（已知吃了啥的场景）
+# Skip the model and compute directly from food_ids (when you know what was eaten)
 curl -X POST http://127.0.0.1:8000/meal/analyze \
   -H "Content-Type: application/json" \
   -d '{"items":[{"food_id":14,"weight_g":150},{"food_id":3,"weight_g":80}]}'
 ```
 
-#### 常见报错
+#### Troubleshooting
 
-| 报错 | 原因 | 处理 |
+| Error | Cause | Fix |
 |---|---|---|
-| `Food with ID X not found` | 没跑 `seed_data.py` | 回到第 4 步初始化数据库 |
-| `weights 必须是数字列表` | Swagger UI 偶尔会偷偷加引号 | 试试不带方括号的写法:`150,80` |
-| `检测到 N 个食物，但提供了 M 个重量` | weights 数量和检测框对不上 | 先调 `/meal/detect` 看清楚有几个框,再按相同数量填 weights |
-| `No module named 'cv2' / 'ultralytics'` | 依赖没装全 | `pip install -r requirements.txt` 重跑 |
-| 识别不出来 / 框很少 | 图里食物不在 18 类里,或角度光线太差 | 换图;或把 `conf` 调低到 `0.1` 试试 |
+| `Food with ID X not found` | `seed_data.py` was never run | Go back to step 4 and initialize the database |
+| `weights must be a list of numbers` | Swagger UI sometimes quietly adds quotes | Try the bracket-free form: `150,80` |
+| `Detected N foods but received M weights` | Weight count does not match the detection count | Call `/meal/detect` first to see how many boxes there are, then send that many weights |
+| `No module named 'cv2' / 'ultralytics'` | Missing dependencies | Re-run `pip install -r requirements.txt` |
+| No / few detections | Foods are outside the 18 classes, or bad angle/lighting | Try another photo, or lower `conf` to `0.1` |
 
-## 接口一览
+## API Overview
 
-| 方法 | 路径 | 用途 |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/foods` | 列出所有食物 |
-| GET | `/foods/{id}` | 查单个食物 |
-| POST | `/meal/analyze` | 用 `food_id + weight_g` 算营养 |
-| POST | `/meal/detect` | 上传图片 → 识别出的 food_id 列表 |
-| POST | `/meal/analyze-image` | 上传图片 + 重量 → 完整营养 + 建议 |
+| GET | `/foods` | List all foods |
+| GET | `/foods/{id}` | Fetch one food |
+| POST | `/meal/analyze` | Compute nutrition from `food_id + weight_g` |
+| POST | `/meal/detect` | Upload a photo → list of detected food_ids |
+| POST | `/meal/analyze-image` | Upload a photo + weights → full nutrition + advice |
 
-## 目录结构
+## Project Layout
 
 ```
 .
 ├── model/
-│   ├── best.pt              # YOLOv11-seg 训练权重（18 类食物）
+│   ├── best.pt              # YOLOv11-seg trained weights (18 food classes)
 │   ├── last.pt
-│   └── train_yolo11_seg.py  # 训练脚本
+│   └── train_yolo11_seg.py  # training script
 ├── src/calorie_plate/
-│   ├── main.py              # FastAPI 入口
-│   ├── inference.py         # YOLO 推理封装
-│   ├── database.py          # SQLModel 表定义
-│   ├── seed_data.py         # 18 种食物初始数据
+│   ├── main.py              # FastAPI entry point
+│   ├── inference.py         # YOLO inference wrapper
+│   ├── database.py          # SQLModel table definitions
+│   ├── seed_data.py         # initial data for the 18 foods
 │   └── nutrition.py
 ├── tests/
 └── requirements.txt
 ```
 
-## 支持识别的食物（18 类，food_id 0–17）
+## Recognized Foods (18 classes, food_id 0–17)
 
 banana, beef, bread, broccoli, carrot, chicken, cucumber, egg, fish, juice, lemon, noodles, pork, potato, rice, sausage, strawberry, tomato
 
 ---
 
-## 🖥️ 桌面 App（一键运行）
+## Desktop App (one-command run)
 
-> 以下为本节新增内容。前端 (Next.js) + PyWebView 桌面壳：FastAPI 在本地启动并**同源托管**前端静态站点，
-> PyWebView 打开窗口指向它，前后端同源，无需单独跑 `next dev`，也解决了"打包后页面无法跳转 / 只在 localhost 能用"的问题。
+> Frontend (Next.js) + PyWebView desktop shell: FastAPI starts locally and
+> **serves the static frontend from the same origin**, and PyWebView opens a
+> window pointed at it. Because frontend and backend share one origin, there
+> is no separate `next dev` process, and the packaged app avoids the
+> "pages cannot navigate / only works on localhost" problem entirely.
 
-### 运行步骤
+### How to run
 
 ```bash
-# 1) 安装后端 + 桌面依赖（requirements.txt 已含 pywebview）
+# 1) Install backend + desktop dependencies (requirements.txt already includes pywebview)
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2) 构建前端静态站点（生成 smart-plate-ui/out/）
+# 2) Build the static frontend site (outputs to smart-plate-ui/out/)
 cd smart-plate-ui
 npm install
-npm run build                      # 等价于 next build --webpack，产物兼容老版 WebView
+npm run build                      # equivalent to next build --webpack; output works in old WebViews
 cd ..
 
-# 3) 一键启动桌面 App
+# 3) Launch the desktop app
 python run_app.py
 ```
 
-`run_app.py`：后台线程拉起 uvicorn（127.0.0.1:8000）→ 等 `/api/health` 就绪 → 打开 PyWebView 窗口。
-数据库 `database.db` 首次启动**自动建表并灌入 18 种食物**，无需手动跑 `database.py` / `seed_data.py`。
+`run_app.py` starts uvicorn on a background thread (127.0.0.1:8000), waits
+for `/api/health` to respond, then opens the PyWebView window. On first
+launch the database `database.db` is **created and seeded with the 18 foods
+automatically** — no need to run `database.py` / `seed_data.py` by hand.
 
-### 前端开发模式（热更新，可选）
+### Frontend dev mode (hot reload, optional)
 
 ```bash
-# 终端 A：后端
+# Terminal A: backend
 cd src/calorie_plate && uvicorn main:app --reload
-# 终端 B：前端 dev（自动连 127.0.0.1:8000）
+# Terminal B: frontend dev server (connects to 127.0.0.1:8000 automatically)
 cd smart-plate-ui && npm run dev   # http://localhost:3000
 ```
 
-### 桌面端功能一览
+### Desktop features
 
-- **设置页**：填写身体数据 + 可选用户名（留空自动生成随机名）→ 计算个性化营养目标
-- **识别工作台**：上传餐盘照片 / 调用相机 → YOLO 识别 → 填写每样食物重量 → 计算热量与三大营养素
-- **Diet Notes**：每餐记录持久化（数据记忆），可回看历史
-- **Nutrition Analysis**：基于今日摄入 vs 目标的推荐 + 推荐补充食物
-- **Account Settings**：多账号切换、单独删除
+- **Setup screen**: enter body metrics + optional username (a random name is generated when blank) → personalized nutrition targets
+- **Recognition workbench**: upload a plate photo / use the camera → YOLO detection → enter the weight of each food → calories and macros
+- **Diet Notes**: every meal is persisted (meal history) and can be reviewed later
+- **Nutrition Analysis**: recommendations based on today's intake vs. targets, plus suggested foods
+- **Account Settings**: switch between accounts, delete individual accounts
 
-### 新增接口（前端用到）
+### Additional endpoints (used by the frontend)
 
-| 方法 | 路径 | 用途 |
+| Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/health` | 健康检查（启动探活） |
-| POST | `/api/user-profile/` | 创建账号 + 计算目标值 |
-| GET | `/api/user-profiles/` | 账号列表（切换用） |
-| GET | `/api/user-profile/{id}` | 查单个账号 |
-| DELETE | `/api/user-profile/{id}` | 删除账号 |
-| POST | `/api/meals/` | 确认摄入（写入一餐记录） |
-| GET | `/api/meals/` | 餐食历史 |
-| GET | `/api/meals/summary` | 当日摄入汇总 |
-| POST | `/api/recommend` | 营养推荐 |
+| GET | `/api/health` | Health check (startup probe) |
+| POST | `/api/user-profile/` | Create an account + compute targets |
+| GET | `/api/user-profiles/` | List accounts (for switching) |
+| GET | `/api/user-profile/{id}` | Fetch one account |
+| DELETE | `/api/user-profile/{id}` | Delete an account |
+| POST | `/api/meals/` | Confirm intake (write one meal record) |
+| GET | `/api/meals/` | Meal history |
+| GET | `/api/meals/summary` | Daily intake summary |
+| POST | `/api/recommend` | Nutrition recommendation |

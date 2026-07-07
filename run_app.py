@@ -1,16 +1,19 @@
-"""Smart Plate 桌面应用启动器。
+"""Smart Plate desktop application launcher.
 
-一个自包含的桌面 app：
-  1. 在后台线程启动 FastAPI（uvicorn），它同时托管：
-       - REST API（/foods、/meal/*、/api/*）
-       - 前端静态站点（smart-plate-ui/out，由 `npm run build` 生成）
-  2. 等后端 /api/health 就绪后，再打开 PyWebView 窗口指向同一个本地端口。
+A self-contained desktop app:
+  1. Starts FastAPI (uvicorn) on a background thread. The server hosts both:
+       - the REST API (/foods, /meal/*, /api/*)
+       - the static frontend site (smart-plate-ui/out, produced by `npm run build`)
+  2. Waits until /api/health responds, then opens a PyWebView window pointed
+     at the same local port.
 
-这样前端与后端同源，彻底避免"打包后用 file:// 打开导致 JS 不加载、页面无法跳转"的问题。
+Serving the frontend and backend from the same origin avoids the classic
+packaged-app failure mode where pages opened via file:// cannot load JS or
+navigate between routes.
 
-首次使用请先构建前端：
+Before the first run, build the frontend:
     cd smart-plate-ui && npm install && npm run build
-然后：
+Then:
     python run_app.py
 """
 
@@ -30,13 +33,13 @@ FRONTEND_OUT = ROOT / "smart-plate-ui" / "out"
 
 
 def _start_backend() -> None:
-    """在当前进程内启动 uvicorn（不另起子进程，便于一键打包）。"""
-    # main.py 用的是 `from database import ...` 这种平铺 import，
-    # 因此要把后端目录加入 sys.path 并以它为基准。
+    """Run uvicorn inside the current process (no subprocess, easier to package)."""
+    # main.py uses flat imports such as `from database import ...`, so the
+    # backend directory must be on sys.path before importing it.
     sys.path.insert(0, str(BACKEND_DIR))
     import uvicorn
 
-    from main import app  # noqa: E402  （path 注入后才能 import）
+    from main import app  # noqa: E402  (importable only after the path insert)
 
     uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
 
@@ -56,16 +59,19 @@ def _wait_until_ready(timeout: float = 30.0) -> bool:
 def main() -> None:
     if not FRONTEND_OUT.is_dir():
         print(
-            "⚠️  未找到前端静态文件：smart-plate-ui/out\n"
-            "    请先构建前端：cd smart-plate-ui && npm install && npm run build\n"
-            "    （窗口仍会打开，但只能访问 API 文档 /docs）"
+            "Warning: frontend static files not found at smart-plate-ui/out\n"
+            "    Build the frontend first: cd smart-plate-ui && npm install && npm run build\n"
+            "    (The window will still open, but only the API docs at /docs will be available.)"
         )
 
     backend = threading.Thread(target=_start_backend, daemon=True)
     backend.start()
 
     if not _wait_until_ready():
-        print("❌ 后端启动超时，请检查依赖是否安装完整（fastapi/uvicorn/ultralytics 等）。")
+        print(
+            "Error: backend startup timed out. "
+            "Check that all dependencies are installed (fastapi/uvicorn/ultralytics, etc.)."
+        )
         return
 
     import webview
@@ -77,7 +83,8 @@ def main() -> None:
         height=800,
         background_color="#09090b",
     )
-    # debug=True 开启 Web Inspector（右键→检查元素），方便排查前端问题。
+    # debug=True enables the Web Inspector (right click -> Inspect Element)
+    # for troubleshooting frontend issues inside the WebView.
     webview.start(debug=True)
 
 

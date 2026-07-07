@@ -1,9 +1,11 @@
-// 统一的后端 API 客户端。
+// Unified backend API client.
 //
-// base URL 策略（同时兼容开发与打包两种运行方式）：
-//   1. 若设置了 NEXT_PUBLIC_API_BASE，优先用它；
-//   2. 否则若页面跑在 :3000（next dev），后端在 127.0.0.1:8000；
-//   3. 否则同源（打包后前端由 FastAPI 在同一端口托管）→ 用相对路径。
+// Base URL strategy (works for both dev and packaged runs):
+//   1. If NEXT_PUBLIC_API_BASE is set, it wins.
+//   2. Otherwise, if the page runs on :3000 (next dev), the backend is at
+//      127.0.0.1:8000.
+//   3. Otherwise same-origin (packaged app: FastAPI serves the frontend on
+//      the same port), so relative paths are used.
 function resolveBase(): string {
   const env = process.env.NEXT_PUBLIC_API_BASE
   if (env) return env.replace(/\/$/, "")
@@ -31,7 +33,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // ---------------------------------------------------------------------------
-// 类型
+// Types
 // ---------------------------------------------------------------------------
 export type NutritionTargets = {
   target_calories: number
@@ -117,7 +119,7 @@ export type Recommendation = {
 }
 
 // ---------------------------------------------------------------------------
-// 接口
+// Endpoints
 // ---------------------------------------------------------------------------
 export function createUserProfile(input: {
   name?: string
@@ -197,8 +199,9 @@ export function getDaySummary(userId: number | null, onDate?: string) {
   return request<DaySummary>(`/api/meals/summary${qs ? `?${qs}` : ""}`)
 }
 
-// 本地兜底：后端不可用时也能算出目标值，保证页面永远能进入 Dashboard。
-// 与后端 utils.calculate_nutrition_targets 保持同一套公式。
+// Local fallback: compute the targets client-side when the backend is
+// unavailable, so the page can always reach the Dashboard. Uses the same
+// formulas as utils.calculate_nutrition_targets on the backend.
 const ACTIVITY_FACTOR: Record<string, number> = {
   sedentary: 1.2,
   light: 1.375,

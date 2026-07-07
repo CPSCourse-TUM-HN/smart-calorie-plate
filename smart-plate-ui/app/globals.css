@@ -75,8 +75,9 @@
 }
 
 @theme inline {
-  /* 工业级、跨平台最通用的系统字体栈（macOS=San Francisco / Windows=Segoe UI /
-     Android·Linux=Roboto）。原生渲染，无需加载 webfont，边缘最清晰。 */
+  /* Cross-platform system font stack (macOS: San Francisco, Windows: Segoe UI,
+     Android/Linux: Roboto). Renders natively with the crispest edges and
+     requires no webfont download. */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --color-background: var(--background);
@@ -121,22 +122,24 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* 整体放大基准字号，所有 rem 字号同比变大，解决"字偏小"。 */
+  /* Larger base font size scales every rem value up proportionally,
+     fixing the "text looks too small" issue. */
   html {
     font-size: 17px;
   }
   body {
     @apply bg-background text-foreground;
-    /* 深色界面下用灰度抗锯齿，字更锐利、不发虚。 */
+    /* Grayscale antialiasing keeps text sharp on dark backgrounds. */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  /* 低调的深色滚动条，与背景融为一体，不再是突兀的白色。 */
+  /* Subtle dark scrollbar that blends into the background instead of
+     standing out in white. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #3f3f46 transparent; /* thumb=zinc-700, track 透明 */
+    scrollbar-color: #3f3f46 transparent; /* thumb: zinc-700, track: transparent */
   }
   ::-webkit-scrollbar {
     width: 10px;

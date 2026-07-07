@@ -9,9 +9,11 @@ def calculate_nutrition_targets(
     activity_level: float,
     diet_mode: str,
 ) -> Dict[str, float]:
-    """计算目标热量与三大营养素（BMR -> TDEE -> 目标热量 -> 宏量分配）。
+    """Compute the calorie and macro targets
+    (BMR -> TDEE -> target calories -> macro split).
 
-    返回 dict 包含：target_calories, target_protein_g, target_fat_g, target_carbs_g
+    Returns a dict with: target_calories, target_protein_g, target_fat_g,
+    target_carbs_g.
     """
     gender_lower = gender.lower()
     if gender_lower not in ("male", "female"):
@@ -33,7 +35,7 @@ def calculate_nutrition_targets(
     else:
         target_calories = tdee
 
-    # 宏量分配
+    # Macro split
     if mode in ("fat_loss", "muscle_gain"):
         target_protein_g = 2.0 * weight_kg
     else:
@@ -41,7 +43,7 @@ def calculate_nutrition_targets(
 
     target_fat_g = 0.9 * weight_kg
 
-    # 确保热量闭合：碳水 = (热量 - protein*4 - fat*9)/4
+    # Keep the calorie budget closed: carbs = (calories - protein*4 - fat*9) / 4
     remaining_kcal = target_calories - (target_protein_g * 4 + target_fat_g * 9)
     target_carbs_g = max(0.0, remaining_kcal / 4.0)
 

@@ -6,7 +6,7 @@ from ultralytics import YOLO
 rf = Roboflow(api_key="0LFib4ka2wwwN6UMEV2U")
 project = rf.workspace("ie-yifei-wang-tum-de").project("smart-tray")
 version = project.version(2)
-dataset = version.download("yolov11")   # 确认项目是 Instance Segmentation
+dataset = version.download("yolov11")   # make sure the project type is Instance Segmentation
 data_yaml = Path(dataset.location) / "data.yaml"
 
 print("Dataset location:", dataset.location)

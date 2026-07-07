@@ -16,7 +16,8 @@ export type Profile = {
   weight: string
   activity: string
   diet: string
-  // 提交后附加：账号 id（后端写入成功才有）+ 计算出的营养目标
+  // Added after submit: account id (only when the backend write succeeds)
+  // plus the computed nutrition targets
   userId: number | null
   targets: NutritionTargets
 }
@@ -79,7 +80,7 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
     setLoading(true)
     setNote(null)
 
-    // 用户名留空则生成一个随机默认名。
+    // Generate a random default name when the username is left blank.
     const name = form.name.trim() || `Guest-${Math.floor(1000 + Math.random() * 9000)}`
 
     const input = {
@@ -100,12 +101,14 @@ export function SetupScreen({ onSubmit }: { onSubmit: (p: Profile) => void }) {
       targets = res.targets
       userId = res.user_profile?.id ?? null
     } catch (e) {
-      // 后端不可用也绝不卡住跳转：本地算目标值，照常进入 Dashboard。
+      // Never block navigation when the backend is down: compute the
+      // targets locally and proceed to the Dashboard as usual.
       targets = computeTargetsLocal(input)
       setNote("Offline mode: backend not connected, using locally computed targets.")
     }
 
-    // 无论联网与否都会跳转 —— 这是修复"打包后无法跳转"的关键。
+    // Always navigate, online or not — this is the key fix for the
+    // "packaged app cannot navigate" issue.
     onSubmit({ ...form, name, userId, targets })
     setLoading(false)
   }

@@ -1,6 +1,9 @@
 from sqlmodel import Session
 from database import engine, Food
 
+# The 18 seed foods. Food.id must match the YOLO class index (alphabetical
+# order of name_en). name_zh is bilingual display data returned by the API,
+# so the Chinese values are intentional.
 initial_foods = [
     Food(id=0, name_zh="香蕉", name_en="banana", kcal_per_100g=89, protein_per_100g=1.1, carbs_per_100g=22.8, fat_per_100g=0.3),
     Food(id=1, name_zh="牛肉", name_en="beef", kcal_per_100g=106, protein_per_100g=20.2, carbs_per_100g=1.2, fat_per_100g=2.3),
@@ -29,7 +32,7 @@ def seed_foods():
         for food in initial_foods:
             session.add(food)
         session.commit()
-        print(f"成功将 {len(initial_foods)} 种食物营养数据导入 SQLite 数据库！")
+        print(f"Successfully imported nutrition data for {len(initial_foods)} foods into the SQLite database!")
 
 if __name__ == "__main__":
     seed_foods()

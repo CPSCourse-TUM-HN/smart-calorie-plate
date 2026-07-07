@@ -116,7 +116,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
   const [userId, setUserId] = useState<number | null>(profile.userId)
   const [toast, setToast] = useState<string | null>(null)
 
-  // 图片识别工作台
+  // Image recognition workbench
   const [preview, setPreview] = useState<string | null>(null)
   const [detecting, setDetecting] = useState(false)
   const [draft, setDraft] = useState<DraftItem[]>([])
@@ -125,7 +125,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
   const [confirming, setConfirming] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
 
-  // 数据记忆 / 汇总 / 推荐
+  // Meal history / daily summary / recommendations
   const [summary, setSummary] = useState<DaySummary | null>(null)
   const [history, setHistory] = useState<MealRecord[]>([])
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null)
@@ -146,7 +146,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
     try {
       setSummary(await getDaySummary(userId))
     } catch {
-      /* 离线则忽略，保持页面可用 */
+      /* ignore when offline so the page stays usable */
     }
   }, [userId])
 
@@ -163,7 +163,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
     refreshHistory()
   }, [refreshSummary, refreshHistory])
 
-  // ----- 图片处理 -----
+  // ----- Image handling -----
   const handleFile = useCallback(
     async (file: File) => {
       setAnalysis(null)
@@ -196,7 +196,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       streamRef.current = stream
       setCameraOn(true)
-      // 等 video 元素渲染后再绑定流
+      // Attach the stream after the video element has rendered
       window.setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -307,7 +307,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
         await deleteUserProfile(id)
         setProfiles((prev) => prev.filter((p) => p.id !== id))
         flash(`Deleted account #${id}`)
-        // 删掉的是当前账号 → 回到设置页重新建档。
+        // Deleting the active account sends the user back to the setup screen.
         if (id === userId) onReset()
       } catch (e) {
         flash(e instanceof Error ? e.message : "Delete failed")
@@ -323,7 +323,7 @@ export function Dashboard({ profile, onReset }: { profile: Profile; onReset: () 
     if (next === "notes") refreshHistory()
   }
 
-  // 右侧面板用：当日已摄入 vs 目标
+  // For the right-hand panel: today's intake vs. targets
   const consumed = {
     kcal: summary?.total_kcal ?? 0,
     protein: summary?.total_protein_g ?? 0,
@@ -562,7 +562,7 @@ function DashboardTab(props: {
         )}
       </div>
 
-      {/* 操作按钮 */}
+      {/* Action buttons */}
       <div className="flex flex-wrap items-center justify-center gap-3">
         <button
           onClick={() => fileRef.current?.click()}
@@ -595,7 +595,7 @@ function DashboardTab(props: {
         )}
       </div>
 
-      {/* 检测结果 + 重量编辑 */}
+      {/* Detection results + weight editing */}
       {draft.length > 0 && (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
           <h3 className="mb-3 text-sm font-semibold text-zinc-100">
@@ -634,7 +634,7 @@ function DashboardTab(props: {
         </div>
       )}
 
-      {/* 计算结果明细 */}
+      {/* Nutrition breakdown */}
       {analysis && (
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-5">
           <h3 className="mb-3 text-sm font-semibold text-emerald-300">Nutrition Breakdown · This Meal</h3>
@@ -673,7 +673,7 @@ function DashboardTab(props: {
   )
 }
 
-/* ===================== Tab: Diet Notes (history / 数据记忆) ===================== */
+/* ===================== Tab: Diet Notes (meal history) ===================== */
 function NotesTab({ history, onRefresh }: { history: MealRecord[]; onRefresh: () => void }) {
   return (
     <>
@@ -725,7 +725,7 @@ function NotesTab({ history, onRefresh }: { history: MealRecord[]; onRefresh: ()
   )
 }
 
-/* ===================== Tab: Nutrition Analysis (推荐) ===================== */
+/* ===================== Tab: Nutrition Analysis (recommendations) ===================== */
 function AnalysisTab({
   recommendation,
   onRefresh,
@@ -799,7 +799,7 @@ function AnalysisTab({
   )
 }
 
-/* ===================== Tab: Account Settings (账号切换) ===================== */
+/* ===================== Tab: Account Settings (account switching) ===================== */
 function AccountTab({
   profiles,
   currentId,

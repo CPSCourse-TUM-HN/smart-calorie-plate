@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from ultralytics import YOLO
 
 
-# YOLO 训练时的类别按字母序排列，正好对应 seed_data.py 中 Food.id 0-17
+# YOLO classes are alphabetically ordered at training time, matching Food.id 0-17 in seed_data.py:
 # banana=0, beef=1, bread=2, broccoli=3, carrot=4, chicken=5, cucumber=6,
 # egg=7, fish=8, juice=9, lemon=10, noodles=11, pork=12, potato=13,
 # rice=14, sausage=15, strawberry=16, tomato=17
@@ -26,9 +26,11 @@ def get_model() -> YOLO:
 
 
 def detect(image_bytes: bytes, conf: float = 0.25) -> List[Dict[str, Any]]:
-    """对图片做一次推理，返回每个检测框对应的 food_id + 置信度。
+    """Run one inference pass on the image and return the food_id and
+    confidence for every detection box.
 
-    YOLO 的 cls 索引直接对应数据库里的 Food.id（按字母序排列）。
+    YOLO's cls index maps directly to Food.id in the database (both are
+    alphabetically ordered).
     """
     import numpy as np
     import cv2
@@ -36,7 +38,7 @@ def detect(image_bytes: bytes, conf: float = 0.25) -> List[Dict[str, Any]]:
     arr = np.frombuffer(image_bytes, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError("无法解码图像，请确认上传的是有效的图片文件")
+        raise ValueError("Could not decode the image. Please upload a valid image file.")
 
     model = get_model()
     results = model.predict(img, conf=conf, verbose=False)

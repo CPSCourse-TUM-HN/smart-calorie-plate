@@ -13,14 +13,14 @@ from database import engine, Food, DietNote, UserProfile, Meal
 from inference import detect as run_detection
 from utils import calculate_nutrition_targets
 
-# 1. 初始化 FastAPI 应用（这就相当于建好了一个服务器外壳）
 app = FastAPI(
     title="Smart Calorie Plate API",
-    description="AI卡路里餐盘的后端接口",
+    description="Backend API for the AI-powered calorie plate",
     version="1.0.0",
 )
 
-# 跨域：开发时前端跑在 :3000，打包后前端由本服务同源托管。全部放行最省心。
+# CORS: during development the frontend runs on :3000; in the packaged app it
+# is served same-origin by this server. Allowing everything covers both cases.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -38,7 +38,8 @@ def on_startup():
 
 
 def _migrate_add_columns():
-    """轻量迁移：create_all 不会给已存在的表补新列，这里手动补齐。"""
+    """Lightweight migration: create_all does not add new columns to existing
+    tables, so any missing columns are added manually here."""
     from sqlalchemy import text
 
     with engine.begin() as conn:
@@ -48,8 +49,9 @@ def _migrate_add_columns():
 
 
 # ---------------------------------------------------------------------------
-# 输入归一化：前端用的是 sedentary/light/... 和 fatloss/maintain/bulk，
-# 后端算法要的是活动系数(float)和 fat_loss/balance/muscle_gain。两边都兼容。
+# Input normalization: the frontend sends sedentary/light/... and
+# fatloss/maintain/bulk, while the backend algorithm expects an activity
+# factor (float) and fat_loss/balance/muscle_gain. Both formats are accepted.
 # ---------------------------------------------------------------------------
 ACTIVITY_MAP = {
     "sedentary": 1.2,
@@ -61,7 +63,7 @@ DIET_MAP = {
     "fatloss": "fat_loss",
     "maintain": "balance",
     "bulk": "muscle_gain",
-    # 也接受后端原生写法
+    # Backend-native values are accepted as-is
     "fat_loss": "fat_loss",
     "balance": "balance",
     "muscle_gain": "muscle_gain",
@@ -77,7 +79,7 @@ def normalize_activity(value) -> float:
     try:
         return float(key)
     except ValueError:
-        return 1.375  # 合理默认值
+        return 1.375  # sensible default
 
 
 def normalize_diet(value: str) -> str:
@@ -85,8 +87,8 @@ def normalize_diet(value: str) -> str:
 
 
 class FoodItem(BaseModel):
-    food_id: int      # 食物在数据库里的 ID
-    weight_g: float   # 称重传感器传来的克数
+    food_id: int      # ID of the food in the database
+    weight_g: float   # weight in grams, reported by the scale sensor
 
 
 class MealRequest(BaseModel):
@@ -99,7 +101,7 @@ def get_session():
 
 
 # ---------------------------------------------------------------------------
-# 共用营养累加 + 健康建议
+# Shared nutrition aggregation + health advice
 # ---------------------------------------------------------------------------
 def _compute_nutrition(items: List[FoodItem], session: Session) -> dict:
     total_kcal = total_protein = total_carbs = total_fat = 0.0
@@ -151,7 +153,8 @@ def _compute_nutrition(items: List[FoodItem], session: Session) -> dict:
 
 
 def _ensure_seed_data():
-    """启动时若食物表为空，自动灌入 18 种食物，省去手动跑 seed_data.py。"""
+    """Seed the 18 initial foods on startup when the Food table is empty,
+    so seed_data.py never has to be run manually."""
     with Session(engine) as session:
         if session.exec(select(Food)).first() is not None:
             return
@@ -165,7 +168,7 @@ def _ensure_seed_data():
 
 
 # ---------------------------------------------------------------------------
-# 食物 / 营养计算接口
+# Food and nutrition-calculation endpoints
 # ---------------------------------------------------------------------------
 @app.get("/foods")
 def get_all_foods(session: Session = Depends(get_session)):
@@ -176,7 +179,7 @@ def get_all_foods(session: Session = Depends(get_session)):
 def get_food_by_id(food_id: int, session: Session = Depends(get_session)):
     food = session.get(Food, food_id)
     if not food:
-        raise HTTPException(status_code=404, detail="数据库里没有找到这个食物！")
+        raise HTTPException(status_code=404, detail="Food not found in the database")
     return food
 
 
@@ -192,7 +195,7 @@ async def detect_meal(
     session: Session = Depends(get_session),
 ):
     if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="请上传图片文件 (image/*)")
+        raise HTTPException(status_code=400, detail="Please upload an image file (image/*)")
 
     image_bytes = await image.read()
     try:
@@ -219,7 +222,7 @@ async def analyze_meal_from_image(
     session: Session = Depends(get_session),
 ):
     if not image.content_type or not image.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="请上传图片文件 (image/*)")
+        raise HTTPException(status_code=400, detail="Please upload an image file (image/*)")
 
     raw = weights.strip().strip('"').strip("'").strip()
     weight_list: list[float] = []
@@ -240,7 +243,7 @@ async def analyze_meal_from_image(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"weights 必须是数字列表，例如 [120, 80] 或 120,80（收到：{weights!r}）",
+                detail=f"weights must be a list of numbers, e.g. [120, 80] or 120,80 (received: {weights!r})",
             )
 
     image_bytes = await image.read()
@@ -252,7 +255,7 @@ async def analyze_meal_from_image(
     if len(detections) != len(weight_list):
         raise HTTPException(
             status_code=400,
-            detail=f"检测到 {len(detections)} 个食物，但提供了 {len(weight_list)} 个重量",
+            detail=f"Detected {len(detections)} foods but received {len(weight_list)} weights",
         )
 
     items = [
@@ -265,7 +268,7 @@ async def analyze_meal_from_image(
 
 
 # ---------------------------------------------------------------------------
-# 用户档案：创建 + 列表 + 单查（支持多账号切换）
+# User profiles: create + list + fetch one (supports multi-account switching)
 # ---------------------------------------------------------------------------
 class UserProfileCreate(BaseModel):
     age: int
@@ -274,7 +277,7 @@ class UserProfileCreate(BaseModel):
     weight_kg: float
     activity_level: float | str
     diet_mode: str
-    name: Optional[str] = None  # 账号显示名，可选
+    name: Optional[str] = None  # optional account display name
 
 
 @app.post("/api/user-profile/")
@@ -282,7 +285,8 @@ def create_user_profile(
     profile: UserProfileCreate,
     session: Session = Depends(get_session),
 ):
-    """接收用户身体数据，计算目标热量与三大营养素，并保存 UserProfile。"""
+    """Take the user's body metrics, compute the calorie and macro targets,
+    and persist the resulting UserProfile."""
     activity = normalize_activity(profile.activity_level)
     diet = normalize_diet(profile.diet_mode)
 
@@ -317,7 +321,7 @@ def create_user_profile(
 
 @app.get("/api/user-profiles/")
 def list_user_profiles(session: Session = Depends(get_session)):
-    """列出所有账号，供前端做账号切换。"""
+    """List all accounts so the frontend can offer account switching."""
     return session.exec(select(UserProfile).order_by(UserProfile.id.desc())).all()
 
 
@@ -325,7 +329,7 @@ def list_user_profiles(session: Session = Depends(get_session)):
 def get_user_profile(user_id: int, session: Session = Depends(get_session)):
     user = session.get(UserProfile, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="找不到该用户档案")
+        raise HTTPException(status_code=404, detail="User profile not found")
     return user
 
 
@@ -333,14 +337,14 @@ def get_user_profile(user_id: int, session: Session = Depends(get_session)):
 def delete_user_profile(user_id: int, session: Session = Depends(get_session)):
     user = session.get(UserProfile, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="找不到该用户档案")
+        raise HTTPException(status_code=404, detail="User profile not found")
     session.delete(user)
     session.commit()
     return {"ok": True, "deleted_id": user_id}
 
 
 # ---------------------------------------------------------------------------
-# 餐食记忆：确认摄入(写入) + 历史(读取) + 当日汇总
+# Meal history: confirm intake (write) + history (read) + daily summary
 # ---------------------------------------------------------------------------
 class MealCreate(BaseModel):
     user_id: Optional[int] = None
@@ -383,7 +387,7 @@ def list_meals(
             d = date.fromisoformat(on_date)
             statement = statement.where(Meal.log_date == d)
         except ValueError:
-            raise HTTPException(status_code=400, detail="on_date 需为 YYYY-MM-DD")
+            raise HTTPException(status_code=400, detail="on_date must be in YYYY-MM-DD format")
     statement = statement.order_by(Meal.created_at.desc())
     return [_meal_to_dict(m) for m in session.exec(statement).all()]
 
@@ -394,13 +398,14 @@ def meals_summary(
     on_date: Optional[str] = None,
     session: Session = Depends(get_session),
 ):
-    """某天（默认今天）的累计摄入，用于 Dashboard 进度环/进度条。"""
+    """Cumulative intake for a given day (defaults to today), used by the
+    Dashboard progress ring and bars."""
     target_date = date.today()
     if on_date:
         try:
             target_date = date.fromisoformat(on_date)
         except ValueError:
-            raise HTTPException(status_code=400, detail="on_date 需为 YYYY-MM-DD")
+            raise HTTPException(status_code=400, detail="on_date must be in YYYY-MM-DD format")
 
     statement = select(Meal).where(Meal.log_date == target_date)
     if user_id is not None:
@@ -421,7 +426,7 @@ def meals_summary(
 def delete_meal(meal_id: int, session: Session = Depends(get_session)):
     meal = session.get(Meal, meal_id)
     if not meal:
-        raise HTTPException(status_code=404, detail="找不到该餐记录")
+        raise HTTPException(status_code=404, detail="Meal record not found")
     session.delete(meal)
     session.commit()
     return {"ok": True, "deleted_id": meal_id}
@@ -447,7 +452,8 @@ def _meal_to_dict(meal: Meal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 营养推荐：根据目标 vs 已摄入，给出建议 + 推荐补充的食物
+# Nutrition recommendation: compare targets vs. actual intake, then return
+# tips plus foods that would help close the gap
 # ---------------------------------------------------------------------------
 class RecommendRequest(BaseModel):
     target_calories: float
@@ -477,7 +483,8 @@ def recommend(payload: RecommendRequest, session: Session = Depends(get_session)
     else:
         tips.append(f"About {remaining['calories']:.0f} kcal left for today.")
 
-    # 找出缺口最大的宏量，给针对性建议 + 推荐高含量食物
+    # Find the macro with the largest gap, then give targeted advice and
+    # suggest foods rich in that macro
     if remaining["protein_g"] > 15:
         tips.append(f"{remaining['protein_g']:.0f}g of protein still needed. Add some quality protein.")
         suggested_food_field = "protein_per_100g"
@@ -494,7 +501,7 @@ def recommend(payload: RecommendRequest, session: Session = Depends(get_session)
     if remaining["fat_g"] < -10:
         tips.append("Fat is high. Watch out for oils and fried foods.")
 
-    if len(tips) == 1:  # 只有热量那一句，说明三大宏量都比较均衡
+    if len(tips) == 1:  # only the calorie tip means all three macros are balanced
         tips.append("Your macros are well balanced. Keep it up!")
 
     suggestions = []
@@ -521,8 +528,10 @@ def health():
 
 
 # ---------------------------------------------------------------------------
-# 静态前端托管：把 Next 导出的静态站点挂在根路径（必须放在所有 API 路由之后）。
-# 打包后整个 app 同源访问，彻底规避 file:// / 跨端口带来的跳转失效问题。
+# Static frontend hosting: mount the exported Next.js site at the root path
+# (must come after all API routes). In the packaged app everything is served
+# same-origin, which avoids the navigation failures caused by file:// URLs
+# or cross-port setups.
 # ---------------------------------------------------------------------------
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "smart-plate-ui" / "out"
 
