@@ -1,0 +1,8 @@
+# Jetson-side hardware integration deps (in addition to the backend's requirements.txt).
+# Note: the desktop app uses opencv-python-headless; these scripts call cv2.imshow,
+# so they need the full opencv build instead.
+pyserial
+requests
+opencv-python
+ultralytics
+numpy
