@@ -16,3 +16,8 @@ smart-plate-ui/out/
 
 # Runtime-generated database
 *.db
+
+# Stray local backup copies (e.g. best.pt_副本)
+*副本*
+*_backup
+*.bak

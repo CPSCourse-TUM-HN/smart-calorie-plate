@@ -48,7 +48,7 @@ Swagger UI, so you can test every endpoint visually without writing code.
 
 #### B. Detection only (no calorie math): `POST /meal/detect`
 
-1. Prepare a photo containing food (JPG or PNG). The `photo/` folder in the repo is empty, so use any photo from your phone or the web.
+1. Prepare a photo containing food (JPG or PNG). The `photo/` folder ships a few samples (`mix.png`, `sausage.jpeg`, `strawberry.png`), or use any photo from your phone or the web.
 2. Expand `POST /meal/detect` → **Try it out**
 3. For the `image` field click **Choose File** and pick a photo; leave `conf` at the default `0.25` (confidence threshold — lower values detect more)
 4. Click **Execute**
@@ -133,13 +133,18 @@ curl -X POST http://127.0.0.1:8000/meal/analyze \
 ├── model/
 │   ├── best.pt              # YOLOv11-seg trained weights (18 food classes)
 │   ├── last.pt
-│   └── train_yolo11_seg.py  # training script
+│   └── train_yolo11_seg.py  # training script (reads ROBOFLOW_API_KEY from env)
 ├── src/calorie_plate/
 │   ├── main.py              # FastAPI entry point
 │   ├── inference.py         # YOLO inference wrapper
 │   ├── database.py          # SQLModel table definitions
 │   ├── seed_data.py         # initial data for the 18 foods
+│   ├── utils.py             # BMR/TDEE/macro target calculation
 │   └── nutrition.py
+├── smart-plate-ui/          # Next.js frontend + PyWebView desktop shell
+├── arduino/                 # Arduino firmware for the 4-load-cell scale + OLED
+├── hardware/                # Jetson-side integration (camera + scale + backend)
+├── photo/                   # sample food photos for testing /meal/detect
 ├── tests/
 └── requirements.txt
 ```
@@ -211,3 +216,25 @@ cd smart-plate-ui && npm run dev   # http://localhost:3000
 | GET | `/api/meals/` | Meal history |
 | GET | `/api/meals/summary` | Daily intake summary |
 | POST | `/api/recommend` | Nutrition recommendation |
+
+---
+
+## Embedded / Hardware (Jetson Nano + Arduino scale)
+
+The physical device pairs an Arduino (4× HX711 load cells → 3 compartment
+weights + OLED) with a Jetson Nano (camera + YOLO) that calls this same backend.
+
+- `arduino/smart_calorie_plate/` — firmware. It calibrates the load cells
+  on-device and streams `DATA,w1,w2,w3,total`; it accepts `NUTRI,kcal,protein,carbs,fat`
+  back to show on the OLED.
+- `hardware/` — Jetson-side scripts: `scale_serial.py` (serial link matching the
+  firmware protocol), `run_camera.py` (camera + detection preview), and
+  `run_fullstack.py` (real scale weights + detection + nutrition → OLED). See
+  [hardware/README.md](hardware/README.md) for wiring and the serial protocol.
+
+## Running the tests
+
+```bash
+pip install pytest
+PYTHONPATH=src python -m pytest        # same command the CI workflow runs
+```
