@@ -1,6 +1,6 @@
-# Hardware integration (Jetson Nano)
+# Hardware integration (Jetson Orin Nano)
 
-The on-device code that ran on the Jetson Nano with the camera + Arduino scale
+The on-device code that ran on the Jetson Orin Nano with the camera + Arduino scale
 wired up. It talks to the same FastAPI backend as the desktop app (default
 `http://localhost:8000`), so start the backend first:
 

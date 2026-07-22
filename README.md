@@ -219,10 +219,10 @@ cd smart-plate-ui && npm run dev   # http://localhost:3000
 
 ---
 
-## Embedded / Hardware (Jetson Nano + Arduino scale)
+## Embedded / Hardware (Jetson Orin Nano + Arduino scale)
 
 The physical device pairs an Arduino (4× HX711 load cells → 3 compartment
-weights + OLED) with a Jetson Nano (camera + YOLO) that calls this same backend.
+weights + OLED) with a Jetson Orin Nano (camera + YOLO) that calls this same backend.
 
 - `arduino/smart_calorie_plate/` — firmware. It calibrates the load cells
   on-device and streams `DATA,w1,w2,w3,total`; it accepts `NUTRI,kcal,protein,carbs,fat`
