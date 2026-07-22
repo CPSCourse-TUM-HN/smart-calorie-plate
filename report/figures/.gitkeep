@@ -1,0 +1,12 @@
+# Placeholder so git tracks report/figures/.
+# main.tex expects these exact filenames (drop the photos here with these names):
+#
+#   system_architecture.jpg   # Fig 1  Architecture Overview
+#   dataset_samples.jpg        # Fig 2  Roboflow dataset samples
+#   inhouse_images.jpg         # Fig 3  in-house annotated tray photo
+#   class_distribution.jpg     # Fig 4  Roboflow per-class counts (banana..fish)
+#   class_balance.jpg          # Fig 5  Roboflow per-class counts (juice..tomato)
+#   test_tray.jpg              # Fig 6  fixed test tray (Smart Tray YOLO screen)
+#   camera_stand.jpg           # Fig 7  Tinkercad camera stand CAD
+#
+# Delete this .gitkeep once the figures are in place (optional).
