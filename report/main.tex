@@ -223,7 +223,7 @@ Results measured on our held-out test set are summarized in Table~\ref{tab:perfo
     Precision                      & 0.771 \\
     Recall                         & 0.716 \\
     Inference speed (Jetson, FP32) & $\approx$12 FPS \\
-    Model size (\texttt{.pt})      & 6.5\,MB \\
+    Model size (\texttt{.pt})      & 5.7\,MB \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -303,7 +303,7 @@ Class IDs were assigned in strict alphabetical order ($0={}$banana, $1={}$beef, 
 
 \subsection{Train / Validation / Test Split}
 
-The dataset was partitioned into 70\% training, 20\% validation, and 10\% held-out test. The validation set was consulted after every training epoch to select the best model checkpoint. The test set remained untouched throughout training and was used exclusively for the final metrics.
+The dataset of 2{,}861 annotated images was partitioned into 2{,}232 training, 420 validation, and 209 test images (approximately 78\,/\,15\,/\,7\%). The validation set was consulted after every training epoch to select the best model checkpoint. The test set remained untouched throughout training and was used exclusively for the final metrics.
 
 Unlike the training and validation subsets, which draw from the combined public, web-scraped, and in-house image pool, the test subset was deliberately composed of photographs taken with the actual deployed hardware. A fixed acrylic test tray was photographed under multiple lighting conditions using the same top-down camera setup used in the final system, rather than relying on additional public or web-sourced images. This ensured that the reported test performance reflects real deployment conditions rather than the more visually consistent distribution of the training data.
 
